@@ -526,3 +526,4 @@ st.markdown(textwrap.dedent("""
     <p class="mt-1">Trained on the RAVDESS dataset. Developed by blurerjr.</p>
 </footer>
 """), unsafe_allow_html=True)
+
