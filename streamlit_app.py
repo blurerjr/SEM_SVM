@@ -60,14 +60,24 @@ model, scaler, label_encoder = load_model_components_from_url()
 # This function must extract the exact same features (type, number, order)
 # as your 'features.csv' was created with.
 # Based on previous discussions, we're assuming 20 MFCCs.
-def extract_features_for_prediction(audio_file_path, sr=22050):
+def extract_features_for_prediction(audio_data, sr=22050):
     """
-    Extracts audio features (20 MFCCs) from a given audio file.
+    Extracts audio features (20 MFCCs) from raw audio data.
     Matches the assumed feature extraction from your training phase.
     """
     try:
-        y, sr = librosa.load(audio_file_path, sr=sr)
+        # Librosa expects a file path or a numpy array.
+        # If audio_data is bytes, we need to save it temporarily or load from bytes.
+        # For simplicity and consistency with previous versions, we'll use a temp file.
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            tmp.write(audio_data)
+            tmp_path = tmp.name
         
+        y, sr = librosa.load(tmp_path, sr=sr)
+        
+        # Clean up temp file immediately after loading
+        os.unlink(tmp_path)
+
         # Ensure n_mfcc matches the number of features in your training data (20 in your CSV)
         mfccs = np.mean(librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20).T, axis=0)
         
@@ -87,15 +97,26 @@ def extract_features_for_prediction(audio_file_path, sr=22050):
         return features
     except Exception as e:
         st.error(f"Error during feature extraction: {e}")
+        if 'tmp_path' in locals() and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
         return None
 
-# --- Custom CSS for Waveform Animation (from your HTML) ---
+# --- Custom CSS for Waveform Animation and Styling ---
 # This will be embedded using st.markdown(unsafe_allow_html=True)
 CUSTOM_CSS = textwrap.dedent("""
 <style>
+    /* General body styling for background */
+    body {
+        background-color: #f9fafb; /* bg-gray-50 */
+    }
+    .stApp {
+        background-color: #f9fafb; /* Ensure Streamlit app background matches */
+    }
+
+    /* Waveform container styling */
     .waveform-container {
         background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
-        height: 100px; /* Reduced height for Streamlit compatibility */
+        height: 100px;
         position: relative;
         overflow: hidden;
         border-radius: 0.5rem; /* rounded-lg */
@@ -105,7 +126,7 @@ CUSTOM_CSS = textwrap.dedent("""
         position: absolute;
         bottom: 0;
         width: 100%;
-        height: 100%; /* Fill container */
+        height: 100%;
         background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1200 120" xmlns="http://www.w3.org/2000/svg"><path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25" fill="white"/><path d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z" opacity=".5" fill="white"/><path d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z" fill="white"/>');
         background-repeat: repeat-x;
         background-size: 1200px 100px;
@@ -130,7 +151,127 @@ CUSTOM_CSS = textwrap.dedent("""
         0%, 100% { opacity: 1; }
         50% { opacity: 0.5; }
     }
+
+    /* Custom button styling for Streamlit buttons */
+    .stButton>button {
+        background-color: #4f46e5; /* indigo-600 */
+        color: white;
+        border-radius: 0.5rem; /* rounded-lg */
+        padding: 0.75rem 1.5rem; /* px-6 py-3 */
+        font-weight: 500; /* font-medium */
+        transition: background-color 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+    }
+    .stButton>button:hover {
+        background-color: #4338ca; /* indigo-700 */
+    }
+    .stButton>button:disabled {
+        background-color: #9ca3af; /* gray-400 */
+        cursor: not-allowed;
+    }
+
+    /* Specific styling for the "Predict Emotion" button to match original HTML */
+    .stButton>button[kind="secondary"] { /* Target the specific button if needed, or adjust general */
+        background-color: #4f46e5; /* indigo-600 */
+        color: white;
+        font-size: 1.125rem; /* text-lg */
+        padding: 0.75rem 1.5rem; /* py-3 px-6 */
+        width: 100%; /* w-full */
+    }
+
+    /* Styling for the file uploader to match HTML design */
+    .stFileUploader > div > div {
+        border: 2px dashed #d1d5db; /* border-2 border-dashed border-gray-300 */
+        border-radius: 0.5rem; /* rounded-lg */
+        padding: 1.5rem; /* p-6 */
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .stFileUploader > div > div > button {
+        background-color: #4f46e5; /* indigo-600 */
+        color: white;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem; /* px-4 py-2 */
+        font-weight: 500;
+        transition: background-color 0.3s ease;
+    }
+    .stFileUploader > div > div > button:hover {
+        background-color: #4338ca; /* indigo-700 */
+    }
+    .stFileUploader > div > div > small { /* "Drag & drop..." text */
+        color: #6b7280; /* text-gray-600 */
+        margin-bottom: 0.75rem; /* mb-3 */
+    }
+    .stFileUploader > div > div > div:first-child > div:first-child { /* "Drag & drop..." container */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* Emotion icon styling */
+    .emotion-icon-container {
+        background-color: #f9fafb; /* bg-gray-50 */
+        border-radius: 0.5rem; /* rounded-lg */
+        padding: 0.75rem; /* p-3 */
+        text-align: center;
+        cursor: pointer; /* Indicate clickable */
+        transition: transform 0.2s, box-shadow 0.2s;
+        height: 100%; /* Ensure consistent height */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    .emotion-icon-container:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    .emotion-icon-container.selected {
+        border: 2px solid #6366f1; /* ring-2 ring-indigo-500 */
+    }
+    .emotion-icon-container i {
+        font-size: 2.25rem; /* text-3xl */
+        margin-bottom: 0.25rem; /* mb-1 */
+    }
+    .emotion-icon-container p {
+        font-size: 0.75rem; /* text-xs */
+        color: #4b5563; /* text-gray-600 */
+    }
+
+    /* Specific emotion colors for icons */
+    .bg-gray-100 { background-color: #f3f4f6; } /* Neutral */
+    .bg-yellow-50 { background-color: #fffbeb; } /* Happy */
+    .bg-blue-50 { background-color: #eff6ff; } /* Sad */
+    .bg-red-50 { background-color: #fef2f2; } /* Angry */
+    .bg-purple-50 { background-color: #f5f3ff; } /* Fearful */
+    .bg-green-50 { background-color: #ecfdf5; } /* Disgust */
+    .bg-pink-50 { background-color: #fdf2f8; } /* Surprised */
+    .bg-teal-50 { background-color: #f0fdfa; } /* Calm */
+
+    .text-gray-500 { color: #6b7280; }
+    .text-yellow-500 { color: #f59e0b; }
+    .text-blue-500 { color: #3b82f6; }
+    .text-red-500 { color: #ef4444; }
+    .text-purple-500 { color: #a855f7; }
+    .text-green-500 { color: #22c55e; }
+    .text-pink-500 { color: #ec4899; }
+    .text-teal-500 { color: #14b8a6; }
+
+    /* Footer styling */
+    .st-emotion-cache-1jm6g5h { /* Target the footer container */
+        text-align: center;
+        color: #6b7280; /* text-gray-500 */
+        font-size: 0.875rem; /* text-sm */
+        margin-top: 3rem; /* mt-12 */
+    }
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 """)
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
@@ -158,33 +299,49 @@ with col_input:
         <h2 class="text-2xl font-semibold text-gray-800 mb-6">Record or Upload Audio</h2>
     """), unsafe_allow_html=True)
 
-    # Recording Section (using Streamlit's native audio_input)
-    st.subheader("🎙️ Record Your Voice")
-    st.markdown(textwrap.dedent("""
-    <p class="text-gray-600 mb-3">Click the button below to start recording. Once finished, click again to stop.</p>
-    <div class="waveform-container">
-        <div class="wave"></div>
-        <div class="wave"></div>
-        <div class="wave"></div>
-    </div>
-    """), unsafe_allow_html=True)
+    # Audio Input Tabs
+    tab1, tab2 = st.tabs(["Record Voice", "Upload Audio File"])
 
-    uploaded_audio = st.audio_input("Start Recording")
-
-    if uploaded_audio is not None:
-        st.markdown("---")
-        st.subheader("Recorded Audio Playback:")
-        st.audio(uploaded_audio, format="audio/wav")
-
-        # Save the uploaded file to a temporary .wav file for Librosa processing
-        with open(TEMP_AUDIO_FILE, "wb") as f:
-            f.write(uploaded_audio.read())
+    with tab1:
+        st.markdown(textwrap.dedent("""
+        <p class="text-gray-600 mb-3">Click the button below to start recording. Once finished, click again to stop.</p>
+        <div class="waveform-container">
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+        </div>
+        """), unsafe_allow_html=True)
         
-        st.info("Audio recorded successfully! Click 'Predict Emotion' to analyze.")
+        # Streamlit's native audio input widget for recording
+        recorded_audio = st.audio_input("Start Recording", key="recorder_input")
+        if recorded_audio:
+            st.session_state.audio_data = recorded_audio.read()
+            st.audio(recorded_audio, format="audio/wav")
+            st.info("Audio recorded successfully! Click 'Analyze Emotion' to process.")
 
-        if st.button("Predict Emotion", use_container_width=True):
+    with tab2:
+        st.markdown(textwrap.dedent("""
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <div class="flex flex-col items-center justify-center">
+                <i class="fas fa-cloud-upload-alt text-4xl text-indigo-500 mb-3"></i>
+                <p class="text-gray-600 mb-3">Drag & drop your audio file here or</p>
+                <p class="text-xs text-gray-500 mt-2">Supported formats: WAV, MP3 (max 25MB)</p>
+            </div>
+        </div>
+        """), unsafe_allow_html=True)
+        uploaded_file = st.file_uploader("Browse Files", type=["wav", "mp3"], key="uploader_input")
+        if uploaded_file:
+            st.session_state.audio_data = uploaded_file.read()
+            st.audio(uploaded_file, format="audio/wav")
+            st.info("Audio file uploaded successfully! Click 'Analyze Emotion' to process.")
+
+    # Analyze Button
+    if st.button("Analyze Emotion", use_container_width=True, key="analyze_button"):
+        if st.session_state.get('audio_data') is None:
+            st.warning("Please record or upload an audio file first.")
+        else:
             with st.spinner("Extracting features and predicting emotion..."):
-                features = extract_features_for_prediction(TEMP_AUDIO_FILE)
+                features = extract_features_for_prediction(st.session_state.audio_data)
 
                 if features is not None:
                     # Reshape features for the scaler (expects 2D array: [n_samples, n_features])
@@ -205,14 +362,7 @@ with col_input:
                     st.rerun() # Rerun to update the results column
                 else:
                     st.error("Failed to extract features or make a prediction.")
-        
-        # Clean up the temporary audio file
-        if os.path.exists(TEMP_AUDIO_FILE):
-            os.remove(TEMP_AUDIO_FILE)
-
-    else:
-        st.info("Click 'Start Recording' to begin capturing your voice.")
-
+    
     st.markdown("</div>", unsafe_allow_html=True) # Close the bg-white container
 
 with col_results:
@@ -269,50 +419,50 @@ with col_results:
             </div>
             
             <div class="grid grid-cols-4 gap-3 mt-6">
-                <div class="emotion-icon">
-                    <div class="bg-gray-100 rounded-lg p-3 text-center {"ring-2 ring-indigo-500" if "neutral" in predicted_emotion else ""}">
+                <div class="emotion-icon-container {"selected" if "neutral" in predicted_emotion else ""}">
+                    <div class="bg-gray-100 rounded-lg p-3 text-center">
                         <i class="fas fa-meh text-3xl text-gray-500 mb-1"></i>
                         <p class="text-xs text-gray-600">Neutral</p>
                     </div>
                 </div>
-                <div class="emotion-icon">
-                    <div class="bg-yellow-50 rounded-lg p-3 text-center {"ring-2 ring-indigo-500" if "happy" in predicted_emotion else ""}">
+                <div class="emotion-icon-container {"selected" if "happy" in predicted_emotion else ""}">
+                    <div class="bg-yellow-50 rounded-lg p-3 text-center">
                         <i class="fas fa-smile text-3xl text-yellow-500 mb-1"></i>
                         <p class="text-xs text-gray-600">Happy</p>
                     </div>
                 </div>
-                <div class="emotion-icon">
-                    <div class="bg-blue-50 rounded-lg p-3 text-center {"ring-2 ring-indigo-500" if "sad" in predicted_emotion else ""}">
+                <div class="emotion-icon-container {"selected" if "sad" in predicted_emotion else ""}">
+                    <div class="bg-blue-50 rounded-lg p-3 text-center">
                         <i class="fas fa-sad-tear text-3xl text-blue-500 mb-1"></i>
                         <p class="text-xs text-gray-600">Sad</p>
                     </div>
                 </div>
-                <div class="emotion-icon">
-                    <div class="bg-red-50 rounded-lg p-3 text-center {"ring-2 ring-indigo-500" if "angry" in predicted_emotion else ""}">
+                <div class="emotion-icon-container {"selected" if "angry" in predicted_emotion else ""}">
+                    <div class="bg-red-50 rounded-lg p-3 text-center">
                         <i class="fas fa-angry text-3xl text-red-500 mb-1"></i>
                         <p class="text-xs text-gray-600">Angry</p>
                     </div>
                 </div>
-                 <div class="emotion-icon">
-                    <div class="bg-purple-50 rounded-lg p-3 text-center {"ring-2 ring-indigo-500" if "fear" in predicted_emotion else ""}">
+                 <div class="emotion-icon-container {"selected" if "fear" in predicted_emotion else ""}">
+                    <div class="bg-purple-50 rounded-lg p-3 text-center">
                         <i class="fas fa-grimace text-3xl text-purple-500 mb-1"></i>
                         <p class="text-xs text-gray-600">Fearful</p>
                     </div>
                 </div>
-                <div class="emotion-icon">
-                    <div class="bg-green-50 rounded-lg p-3 text-center {"ring-2 ring-indigo-500" if "disgust" in predicted_emotion else ""}">
+                <div class="emotion-icon-container {"selected" if "disgust" in predicted_emotion else ""}">
+                    <div class="bg-green-50 rounded-lg p-3 text-center">
                         <i class="fas fa-grimace text-3xl text-green-500 mb-1"></i>
                         <p class="text-xs text-gray-600">Disgust</p>
                     </div>
                 </div>
-                <div class="emotion-icon">
-                    <div class="bg-pink-50 rounded-lg p-3 text-center {"ring-2 ring-indigo-500" if "surprise" in predicted_emotion else ""}">
+                <div class="emotion-icon-container {"selected" if "surprise" in predicted_emotion else ""}">
+                    <div class="bg-pink-50 rounded-lg p-3 text-center">
                         <i class="fas fa-surprise text-3xl text-pink-500 mb-1"></i>
                         <p class="text-xs text-gray-600">Surprised</p>
                     </div>
                 </div>
-                <div class="emotion-icon">
-                    <div class="bg-teal-50 rounded-lg p-3 text-center {"ring-2 ring-indigo-500" if "calm" in predicted_emotion else ""}">
+                <div class="emotion-icon-container {"selected" if "calm" in predicted_emotion else ""}">
+                    <div class="bg-teal-50 rounded-lg p-3 text-center">
                         <i class="fas fa-spa text-3xl text-teal-500 mb-1"></i>
                         <p class="text-xs text-gray-600">Calm</p>
                     </div>
