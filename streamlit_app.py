@@ -7,6 +7,7 @@ import io
 import os
 import soundfile as sf # Required by librosa for writing audio files
 import matplotlib.pyplot as plt # For plotting features
+import textwrap # For dedenting HTML strings
 
 # --- Configuration ---
 # GitHub raw URLs for your saved model components
@@ -90,7 +91,7 @@ def extract_features_for_prediction(audio_file_path, sr=22050):
 
 # --- Custom CSS for Waveform Animation (from your HTML) ---
 # This will be embedded using st.markdown(unsafe_allow_html=True)
-CUSTOM_CSS = """
+CUSTOM_CSS = textwrap.dedent("""
 <style>
     .waveform-container {
         background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
@@ -130,18 +131,21 @@ CUSTOM_CSS = """
         50% { opacity: 0.5; }
     }
 </style>
-"""
+""")
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # --- Streamlit App Layout ---
 st.set_page_config(page_title="Speech Emotion Recognition", page_icon="🗣️", layout="wide")
 
-st.markdown("""
+# Diagnostic: Print Streamlit version
+st.sidebar.write(f"Streamlit Version: {st.__version__}")
+
+st.markdown(textwrap.dedent("""
 <header class="mb-10 text-center">
     <h1 class="text-4xl font-bold text-indigo-700 mb-2">Speech Emotion Recognition</h1>
     <p class="text-lg text-gray-600">Analyze emotions in speech using machine learning</p>
 </header>
-""", unsafe_allow_html=True)
+"""), unsafe_allow_html=True)
 
 st.warning("Please allow microphone access in your browser when prompted.")
 
@@ -149,21 +153,21 @@ st.warning("Please allow microphone access in your browser when prompted.")
 col_input, col_results = st.columns(2)
 
 with col_input:
-    st.markdown("""
+    st.markdown(textwrap.dedent("""
     <div class="bg-white rounded-xl shadow-lg p-6">
         <h2 class="text-2xl font-semibold text-gray-800 mb-6">Record or Upload Audio</h2>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     # Recording Section (using Streamlit's native audio_input)
     st.subheader("🎙️ Record Your Voice")
-    st.markdown("""
+    st.markdown(textwrap.dedent("""
     <p class="text-gray-600 mb-3">Click the button below to start recording. Once finished, click again to stop.</p>
     <div class="waveform-container">
         <div class="wave"></div>
         <div class="wave"></div>
         <div class="wave"></div>
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     uploaded_audio = st.audio_input("Start Recording")
 
@@ -212,10 +216,10 @@ with col_input:
     st.markdown("</div>", unsafe_allow_html=True) # Close the bg-white container
 
 with col_results:
-    st.markdown("""
+    st.markdown(textwrap.dedent("""
     <div class="bg-white rounded-xl shadow-lg p-6">
         <h2 class="text-2xl font-semibold text-gray-800 mb-6">Analysis Results</h2>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     if 'has_prediction' in st.session_state and st.session_state['has_prediction']:
         predicted_emotion = st.session_state['predicted_emotion']
@@ -226,7 +230,7 @@ with col_results:
         gender = "Male" if "male" in predicted_emotion else "Female"
         gender_icon = "fas fa-mars text-blue-600" if gender == "Male" else "fas fa-venus text-pink-600"
         
-        st.markdown(f"""
+        st.markdown(textwrap.dedent(f"""
         <div class="mb-8">
             <h3 class="text-lg font-medium text-gray-700 mb-4">Speaker Gender</h3>
             <div class="flex items-center">
@@ -240,7 +244,7 @@ with col_results:
                 </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """), unsafe_allow_html=True)
 
         # --- Emotion Prediction ---
         # Clean up emotion name for display (e.g., 'male_calm' -> 'Calm')
@@ -251,7 +255,7 @@ with col_results:
         # Here, we'll use a fixed high confidence for display since SVM's .predict gives a single class
         confidence_display = "High" # Placeholder for display
         
-        st.markdown(f"""
+        st.markdown(textwrap.dedent(f"""
         <div class="mb-8">
             <h3 class="text-lg font-medium text-gray-700 mb-4">Emotion Detection</h3>
             <div class="bg-gray-50 rounded-lg p-4">
@@ -315,7 +319,7 @@ with col_results:
                 </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """), unsafe_allow_html=True)
 
         # --- Feature Visualization (using Matplotlib/Streamlit's native plot) ---
         st.subheader("📊 Audio Features (MFCCs)")
@@ -328,12 +332,12 @@ with col_results:
         plt.close(fig) # Close the figure to prevent it from displaying multiple times
 
     else:
-        st.markdown("""
+        st.markdown(textwrap.dedent("""
         <div id="resultsPlaceholder" class="text-center py-12">
             <i class="fas fa-wave-square text-5xl text-gray-300 mb-4"></i>
             <p class="text-gray-500">Record or upload audio to analyze emotions</p>
         </div>
-        """, unsafe_allow_html=True)
+        """), unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True) # Close the bg-white container
 
@@ -365,9 +369,9 @@ with st.expander("Give Feedback (Optional)"):
 
 
 st.markdown("---")
-st.markdown("""
+st.markdown(textwrap.dedent("""
 <footer class="mt-12 text-center text-gray-500 text-sm">
     <p>Speech Emotion Recognition using Librosa for feature extraction and SVM for classification</p>
     <p class="mt-1">Trained on the RAVDESS dataset. Developed by blurerjr.</p>
 </footer>
-""", unsafe_allow_html=True)
+"""), unsafe_allow_html=True)
