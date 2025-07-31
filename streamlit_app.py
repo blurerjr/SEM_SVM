@@ -99,13 +99,14 @@ Record a short speech segment using your microphone, and I'll predict the emotio
 st.warning("Please allow microphone access in your browser when prompted.")
 
 # Streamlit's native audio input widget for recording
-uploaded_audio = st.audio_input("Record your speech here", type="wav")
+# Removed 'type="wav"' as it's not a supported argument for st.audio_input()
+uploaded_audio = st.audio_input("Record your speech here")
 
 if uploaded_audio is not None:
     # Display the recorded audio for playback
     st.markdown("---")
     st.subheader("Recorded Audio:")
-    st.audio(uploaded_audio, format="audio/wav")
+    st.audio(uploaded_audio, format="audio/wav") # Keep format here, it's for playback
 
     # Save the uploaded file to a temporary .wav file for Librosa processing
     with open(TEMP_AUDIO_FILE, "wb") as f:
@@ -143,4 +144,3 @@ else:
 
 st.markdown("---")
 st.markdown("Model trained on RAVDESS dataset using SVM. Developed by blurerjr.")
-
