@@ -1,9 +1,7 @@
-# 📦 Streamlit App Starter Kit 
-```
-⬆️ (Replace above with your app's name)
-```
+#  Sound Emotion Recognition
 
-Description of the app ...
+
+THis app utilizes Librosa and SVM for sound emotion recognition and hosted on streamlit
 
 ## Demo App
 
@@ -15,11 +13,11 @@ Description of the app ...
 
 ## Section Heading
 
-This is filler text, please replace this with text for this section.
+Below are some resources you could use to prepare 
 
 ## Further Reading
 
 This is filler text, please replace this with a explanatory text about further relevant resources for this repo
-- Resource 1
-- Resource 2
-- Resource 3
+- Google.com
+- SVM DOC
+- Librosa Doc
