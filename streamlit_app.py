@@ -1,4 +1,4 @@
-                                    import streamlit as st
+import streamlit as st
 import librosa
 import numpy as np
 import joblib
@@ -17,7 +17,7 @@ MODEL_URL = "https://raw.githubusercontent.com/blurerjr/SEM_SVM/refs/heads/maste
 SCALER_URL = "https://raw.githubusercontent.com/blurerjr/SEM_SVM/refs/heads/master/feature_scaler.pkl"
 ENCODER_URL = "https://raw.githubusercontent.com/blurerjr/SEM_SVM/refs/heads/master/label_encoder.pkl"
 
-# --- Function to Load Model Components from URL ---                    
+# --- Function to Load Model Components from URL ---
 @st.cache_resource # Cache the loading of these heavy resources
 def load_model_components_from_url():
     """Loads the pre-trained model, scaler, and label encoder from GitHub URLs."""
