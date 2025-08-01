@@ -5,27 +5,26 @@ import joblib
 import requests
 import io
 import os
-import soundfile as sf # Required by librosa for writing audio files
-import matplotlib.pyplot as plt # For plotting features
-import textwrap # For dedenting HTML strings
-import tempfile # For creating temporary files
+import soundfile as sf
+import matplotlib.pyplot as plt
+import textwrap
+import tempfile
 
 # --- Configuration ---
 # GitHub raw URLs for your saved model components
-# IMPORTANT: Ensure these URLs are correct and publicly accessible
 MODEL_URL = "https://raw.githubusercontent.com/blurerjr/SEM_SVM/refs/heads/master/final_best_model.pkl"
 SCALER_URL = "https://raw.githubusercontent.com/blurerjr/SEM_SVM/refs/heads/master/feature_scaler.pkl"
 ENCODER_URL = "https://raw.githubusercontent.com/blurerjr/SEM_SVM/refs/heads/master/label_encoder.pkl"
 
 # --- Function to Load Model Components from URL ---
-@st.cache_resource # Cache the loading of these heavy resources
+@st.cache_resource
 def load_model_components_from_url():
     """Loads the pre-trained model, scaler, and label encoder from GitHub URLs."""
     try:
         # Fetch model
         st.write("Fetching model from GitHub...")
         model_response = requests.get(MODEL_URL)
-        model_response.raise_for_status() # Raise an exception for HTTP errors
+        model_response.raise_for_status()
         model = joblib.load(io.BytesIO(model_response.content))
         st.success("Model loaded.")
 
@@ -46,60 +45,44 @@ def load_model_components_from_url():
         return model, scaler, label_encoder
     except requests.exceptions.RequestException as e:
         st.error(f"Failed to fetch model components from GitHub. Please check URLs and internet connection: {e}")
-        st.stop() # Stop the app if crucial files can't be loaded
+        st.stop()
     except Exception as e:
         st.error(f"An unexpected error occurred while loading model components: {e}")
         st.stop()
 
 # Load model components once at the start
-model, scaler, label_encoder = load_model_components_from_url()
+try:
+    model, scaler, label_encoder = load_model_components_from_url()
+except Exception as e:
+    st.error("Application could not start due to an error loading the model. Please check the logs.")
+    st.stop()
 
-# --- Feature Extraction Function (MUST match your training process) ---
-# This function must extract the exact same features (type, number, order)
-# as your 'features.csv' was created with.
-# Based on previous discussions, we're assuming 20 MFCCs.
+# --- Feature Extraction Function ---
 def extract_features_for_prediction(audio_data_bytes, sr=22050):
     """
     Extracts audio features (20 MFCCs) from raw audio data bytes.
-    Matches the assumed feature extraction from your training phase.
+    Handles different audio formats using an in-memory approach.
     """
     try:
-        # Create a temporary file to save the audio bytes for librosa
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-            tmp_file.write(audio_data_bytes)
-            tmp_path = tmp_file.name
+        # Use an in-memory byte stream instead of a temporary file
+        audio_stream = io.BytesIO(audio_data_bytes)
         
-        y, sr = librosa.load(tmp_path, sr=sr)
+        # Load the audio data
+        y, sr = librosa.load(audio_stream, sr=sr)
         
-        # Clean up the temporary file immediately
-        os.unlink(tmp_path)
-
-        # Ensure n_mfcc matches the number of features in your training data (20)
         mfccs = np.mean(librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20).T, axis=0)
         
-        # If your training used other features (chroma, ZCR, etc.) concatenated,
-        # you MUST uncomment and add them here in the exact same order:
-        # stft = np.abs(librosa.stft(y))
-        # chroma = np.mean(librosa.feature.chroma_stft(S=stft, sr=sr).T, axis=0)
-        # mel_spec = np.mean(librosa.feature.melspectrogram(y=y, sr=sr).T, axis=0)
-        # zcr = np.mean(librosa.feature.zero_crossing_rate(y=y).T, axis=0)
-        # spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr).T, axis=0)
-        # spectral_rolloff = np.mean(librosa.feature.spectral_rolloff(y=y, sr=sr).T, axis=0)
-        # rms = np.mean(librosa.feature.rms(y=y).T, axis=0)
-        # features = np.hstack((mfccs, chroma, mel_spec, zcr, spectral_centroid, spectral_rolloff, rms))
+        # NOTE: If your model was trained with other features,
+        # you must uncomment and concatenate them here.
         
-        features = mfccs # Sticking to 20 MFCCs based on your CSV's 20 columns
+        features = mfccs
         
         return features
     except Exception as e:
         st.error(f"Error during feature extraction: {e}")
-        # Ensure temp file is cleaned up even if an error occurs
-        if 'tmp_path' in locals() and os.path.exists(tmp_path):
-            os.unlink(tmp_path)
         return None
 
 # --- Custom CSS for Waveform Animation and Styling ---
-# This will be embedded using st.markdown(unsafe_allow_html=True)
 CUSTOM_CSS = textwrap.dedent("""
 <style>
     /* General body styling for background */
@@ -278,9 +261,6 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 # --- Streamlit App Layout ---
 st.set_page_config(page_title="Speech Emotion Recognition", page_icon="🗣️", layout="wide")
 
-# Diagnostic: Print Streamlit version
-st.sidebar.write(f"Streamlit Version: {st.__version__}")
-
 st.markdown(textwrap.dedent("""
 <header class="mb-10 text-center">
     <h1 class="text-4xl font-bold text-indigo-700 mb-2">Speech Emotion Recognition</h1>
@@ -341,30 +321,25 @@ with col_input:
             st.warning("Please record or upload an audio file first.")
         else:
             with st.spinner("Extracting features and predicting emotion..."):
-                # Pass raw audio bytes to the feature extraction function
                 features = extract_features_for_prediction(st.session_state.audio_data)
 
                 if features is not None:
-                    # Reshape features for the scaler (expects 2D array: [n_samples, n_features])
-                    features_reshaped = features.reshape(1, -1)
-                    
-                    # Scale the features using the loaded scaler
-                    scaled_features = scaler.transform(features_reshaped)
-                    
-                    # Make prediction with the loaded model
-                    prediction_encoded = model.predict(scaled_features)
-                    
-                    # Decode the numerical prediction back to the original emotion label string
-                    predicted_emotion = label_encoder.inverse_transform(prediction_encoded)[0]
-                    
-                    st.session_state['predicted_emotion'] = predicted_emotion
-                    st.session_state['predicted_features'] = features
-                    st.session_state['has_prediction'] = True
-                    st.rerun() # Rerun to update the results column
+                    try:
+                        features_reshaped = features.reshape(1, -1)
+                        scaled_features = scaler.transform(features_reshaped)
+                        prediction_encoded = model.predict(scaled_features)
+                        predicted_emotion = label_encoder.inverse_transform(prediction_encoded)[0]
+                        
+                        st.session_state['predicted_emotion'] = predicted_emotion
+                        st.session_state['predicted_features'] = features
+                        st.session_state['has_prediction'] = True
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"An error occurred during prediction: {e}")
                 else:
                     st.error("Failed to extract features or make a prediction.")
     
-    st.markdown("</div>", unsafe_allow_html=True) # Close the bg-white container
+    st.markdown("</div>", unsafe_allow_html=True)
 
 with col_results:
     st.markdown(textwrap.dedent("""
@@ -376,8 +351,6 @@ with col_results:
         predicted_emotion = st.session_state['predicted_emotion']
         predicted_features = st.session_state['predicted_features']
 
-        # --- Gender Prediction (Simplified) ---
-        # Assuming gender is part of your emotion label (e.g., 'male_calm', 'female_happy')
         gender = "Male" if "male" in predicted_emotion else "Female"
         gender_icon = "fas fa-mars text-blue-600" if gender == "Male" else "fas fa-venus text-pink-600"
         
@@ -397,14 +370,9 @@ with col_results:
         </div>
         """), unsafe_allow_html=True)
 
-        # --- Emotion Prediction ---
-        # Clean up emotion name for display (e.g., 'male_calm' -> 'Calm')
         display_emotion = predicted_emotion.replace("male_", "").replace("female_", "").capitalize()
         
-        # Map emotion to a confidence color/bar (simplified, as we don't have probabilities directly from SVM predict)
-        # For a real application, you'd use model.predict_proba() if available and apply softmax
-        # Here, we'll use a fixed high confidence for display since SVM's .predict gives a single class
-        confidence_display = "High" # Placeholder for display
+        confidence_display = "High"
         
         st.markdown(textwrap.dedent(f"""
         <div class="mb-8">
@@ -421,7 +389,6 @@ with col_results:
         </div>
         """), unsafe_allow_html=True)
         
-        # --- Dynamically generated emotion icons section ---
         emotions = [
             ("neutral", "fas fa-meh", "text-gray-500", "bg-gray-100", "Neutral"),
             ("happy", "fas fa-smile", "text-yellow-500", "bg-yellow-50", "Happy"),
@@ -446,19 +413,14 @@ with col_results:
             """
             emotion_icons_html.append(html_content)
         
-        # This is the fix: We join all the individual icon HTML strings into one big string.
-        # This ensures Streamlit processes them as a single block of HTML.
         final_icons_html = textwrap.dedent(f"""
         <div class="grid grid-cols-4 gap-3 mt-6">
             {"".join(emotion_icons_html)}
         </div>
         """)
         
-        # Then, we render that single HTML string with unsafe_allow_html=True
         st.markdown(final_icons_html, unsafe_allow_html=True)
-        # --- End of dynamically generated icons ---
 
-        # --- Feature Visualization (using Matplotlib/Streamlit's native plot) ---
         st.subheader("📊 Audio Features (MFCCs)")
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.bar(range(len(predicted_features)), predicted_features, color='skyblue')
@@ -466,7 +428,7 @@ with col_results:
         ax.set_ylabel("Value")
         ax.set_title("Extracted MFCC Features")
         st.pyplot(fig)
-        plt.close(fig) # Close the figure to prevent it from displaying multiple times
+        plt.close(fig)
 
     else:
         st.markdown(textwrap.dedent("""
@@ -476,11 +438,10 @@ with col_results:
         </div>
         """), unsafe_allow_html=True)
 
-    st.markdown("</div>", unsafe_allow_html=True) # Close the bg-white container
+    st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("---")
 
-# --- Model Improvement Section ---
 st.subheader("📈 Help Improve the Model")
 st.markdown("""
 Your feedback is valuable for making this model even better!
@@ -490,7 +451,6 @@ In the future, we plan to add features here that allow you to:
 * Contribute new audio samples for training.
 """)
 
-# Example of a simple feedback mechanism (not connected to model training yet)
 with st.expander("Give Feedback (Optional)"):
     st.write("Was the prediction accurate?")
     col1_fb, col2_fb = st.columns(2)
