@@ -446,13 +446,15 @@ with col_results:
             """
             emotion_icons_html.append(html_content)
         
-        # Join all icon HTML strings and wrap them in the grid container
+        # This is the fix: We join all the individual icon HTML strings into one big string.
+        # This ensures Streamlit processes them as a single block of HTML.
         final_icons_html = textwrap.dedent(f"""
         <div class="grid grid-cols-4 gap-3 mt-6">
             {"".join(emotion_icons_html)}
         </div>
         """)
         
+        # Then, we render that single HTML string with unsafe_allow_html=True
         st.markdown(final_icons_html, unsafe_allow_html=True)
         # --- End of dynamically generated icons ---
 
