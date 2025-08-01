@@ -418,59 +418,43 @@ with col_results:
                     <div class="bg-gradient-to-r from-blue-500 to-purple-600 h-2.5 rounded-full" style="width: 90%"></div>
                 </div>
             </div>
-            
-            <div class="grid grid-cols-4 gap-3 mt-6">
-                <div class="emotion-icon-container {"selected" if "neutral" in predicted_emotion else ""}">
-                    <div class="bg-gray-100 rounded-lg p-3 text-center">
-                        <i class="fas fa-meh text-3xl text-gray-500 mb-1"></i>
-                        <p class="text-xs text-gray-600">Neutral</p>
-                    </div>
-                </div>
-                <div class="emotion-icon-container {"selected" if "happy" in predicted_emotion else ""}">
-                    <div class="bg-yellow-50 rounded-lg p-3 text-center">
-                        <i class="fas fa-smile text-3xl text-yellow-500 mb-1"></i>
-                        <p class="text-xs text-gray-600">Happy</p>
-                    </div>
-                </div>
-                <div class="emotion-icon-container {"selected" if "sad" in predicted_emotion else ""}">
-                    <div class="bg-blue-50 rounded-lg p-3 text-center">
-                        <i class="fas fa-sad-tear text-3xl text-blue-500 mb-1"></i>
-                        <p class="text-xs text-gray-600">Sad</p>
-                    </div>
-                </div>
-                <div class="emotion-icon-container {"selected" if "angry" in predicted_emotion else ""}">
-                    <div class="bg-red-50 rounded-lg p-3 text-center">
-                        <i class="fas fa-angry text-3xl text-red-500 mb-1"></i>
-                        <p class="text-xs text-gray-600">Angry</p>
-                    </div>
-                </div>
-                 <div class="emotion-icon-container {"selected" if "fear" in predicted_emotion else ""}">
-                    <div class="bg-purple-50 rounded-lg p-3 text-center">
-                        <i class="fas fa-grimace text-3xl text-purple-500 mb-1"></i>
-                        <p class="text-xs text-gray-600">Fearful</p>
-                    </div>
-                </div>
-                <div class="emotion-icon-container {"selected" if "disgust" in predicted_emotion else ""}">
-                    <div class="bg-green-50 rounded-lg p-3 text-center">
-                        <i class="fas fa-grimace text-3xl text-green-500 mb-1"></i>
-                        <p class="text-xs text-gray-600">Disgust</p>
-                    </div>
-                </div>
-                <div class="emotion-icon-container {"selected" if "surprise" in predicted_emotion else ""}">
-                    <div class="bg-pink-50 rounded-lg p-3 text-center">
-                        <i class="fas fa-surprise text-3xl text-pink-500 mb-1"></i>
-                        <p class="text-xs text-gray-600">Surprised</p>
-                    </div>
-                </div>
-                <div class="emotion-icon-container {"selected" if "calm" in predicted_emotion else ""}">
-                    <div class="bg-teal-50 rounded-lg p-3 text-center">
-                        <i class="fas fa-spa text-3xl text-teal-500 mb-1"></i>
-                        <p class="text-xs text-gray-600">Calm</p>
-                    </div>
-                </div>
-            </div>
         </div>
         """), unsafe_allow_html=True)
+        
+        # --- Dynamically generated emotion icons section ---
+        emotions = [
+            ("neutral", "fas fa-meh", "text-gray-500", "bg-gray-100", "Neutral"),
+            ("happy", "fas fa-smile", "text-yellow-500", "bg-yellow-50", "Happy"),
+            ("sad", "fas fa-sad-tear", "text-blue-500", "bg-blue-50", "Sad"),
+            ("angry", "fas fa-angry", "text-red-500", "bg-red-50", "Angry"),
+            ("fear", "fas fa-grimace", "text-purple-500", "bg-purple-50", "Fearful"),
+            ("disgust", "fas fa-grimace", "text-green-500", "bg-green-50", "Disgust"),
+            ("surprise", "fas fa-surprise", "text-pink-500", "bg-pink-50", "Surprised"),
+            ("calm", "fas fa-spa", "text-teal-500", "bg-teal-50", "Calm"),
+        ]
+
+        emotion_icons_html = []
+        for emotion_key, icon, color, bg, label in emotions:
+            selected_class = "selected" if emotion_key in predicted_emotion.lower() else ""
+            html_content = f"""
+            <div class="emotion-icon-container {selected_class}">
+                <div class="{bg} rounded-lg p-3 text-center">
+                    <i class="{icon} text-3xl {color} mb-1"></i>
+                    <p class="text-xs text-gray-600">{label}</p>
+                </div>
+            </div>
+            """
+            emotion_icons_html.append(html_content)
+        
+        # Join all icon HTML strings and wrap them in the grid container
+        final_icons_html = textwrap.dedent(f"""
+        <div class="grid grid-cols-4 gap-3 mt-6">
+            {"".join(emotion_icons_html)}
+        </div>
+        """)
+        
+        st.markdown(final_icons_html, unsafe_allow_html=True)
+        # --- End of dynamically generated icons ---
 
         # --- Feature Visualization (using Matplotlib/Streamlit's native plot) ---
         st.subheader("📊 Audio Features (MFCCs)")
@@ -526,4 +510,3 @@ st.markdown(textwrap.dedent("""
     <p class="mt-1">Trained on the RAVDESS dataset. Developed by blurerjr.</p>
 </footer>
 """), unsafe_allow_html=True)
-
