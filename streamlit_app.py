@@ -342,53 +342,65 @@ with col_input:
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col_results:
-    st.markdown(textwrap.dedent("""
-    <div class="bg-white rounded-xl shadow-lg p-6">
-        <h2 class="text-2xl font-semibold text-gray-800 mb-6">Analysis Results</h2>
-    """), unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Analysis Results</h2>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if 'has_prediction' in st.session_state and st.session_state['has_prediction']:
         predicted_emotion = st.session_state['predicted_emotion']
         predicted_features = st.session_state['predicted_features']
 
-        gender = "Male" if "male" in predicted_emotion else "Female"
+        # Determine gender and corresponding icon
+        gender = "Male" if "male" in predicted_emotion.lower() else "Female"
         gender_icon = "fas fa-mars text-blue-600" if gender == "Male" else "fas fa-venus text-pink-600"
-        
-        st.markdown(textwrap.dedent(f"""
-        <div class="mb-8">
-            <h3 class="text-lg font-medium text-gray-700 mb-4">Speaker Gender</h3>
-            <div class="flex items-center">
-                <div class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mr-4">
-                    <i class="{gender_icon} text-2xl"></i>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500">Predicted gender</p>
-                    <p class="text-xl font-semibold text-gray-800">{gender}</p>
-                    <p class="text-sm text-gray-500">Confidence: N/A (single prediction)</p>
-                </div>
-            </div>
-        </div>
-        """), unsafe_allow_html=True)
 
-        display_emotion = predicted_emotion.replace("male_", "").replace("female_", "").capitalize()
-        
-        confidence_display = "High"
-        
-        st.markdown(textwrap.dedent(f"""
-        <div class="mb-8">
-            <h3 class="text-lg font-medium text-gray-700 mb-4">Emotion Detection</h3>
-            <div class="bg-gray-50 rounded-lg p-4">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="font-medium text-gray-800">{display_emotion}</span>
-                    <span class="text-sm text-gray-500">Confidence: {confidence_display}</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div class="bg-gradient-to-r from-blue-500 to-purple-600 h-2.5 rounded-full" style="width: 90%"></div>
+        # Speaker Gender Section
+        st.markdown(
+            f"""
+            <div class="mb-8">
+                <h3 class="text-lg font-medium text-gray-700 mb-4">Speaker Gender</h3>
+                <div class="flex items-center">
+                    <div class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mr-4">
+                        <i class="{gender_icon} text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Predicted gender</p>
+                        <p class="text-xl font-semibold text-gray-800">{gender}</p>
+                        <p class="text-sm text-gray-500">Confidence: N/A (single prediction)</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        """), unsafe_allow_html=True)
-        
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Emotion Detection Section
+        display_emotion = predicted_emotion.replace("male_", "").replace("female_", "").capitalize()
+        confidence_display = "High"
+
+        st.markdown(
+            f"""
+            <div class="mb-8">
+                <h3 class="text-lg font-medium text-gray-700 mb-4">Emotion Detection</h3>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-medium text-gray-800">{display_emotion}</span>
+                        <span class="text-sm text-gray-500">Confidence: {confidence_display}</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="bg-gradient-to-r from-blue-500 to-purple-600 h-2.5 rounded-full" style="width: 90%"></div>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Emotion Icons Grid
         emotions = [
             ("neutral", "fas fa-meh", "text-gray-500", "bg-gray-100", "Neutral"),
             ("happy", "fas fa-smile", "text-yellow-500", "bg-yellow-50", "Happy"),
@@ -400,27 +412,31 @@ with col_results:
             ("calm", "fas fa-spa", "text-teal-500", "bg-teal-50", "Calm"),
         ]
 
+        # Generate HTML for emotion icons
         emotion_icons_html = []
         for emotion_key, icon, color, bg, label in emotions:
             selected_class = "selected" if emotion_key in predicted_emotion.lower() else ""
-            html_content = f"""
-            <div class="emotion-icon-container {selected_class}">
-                <div class="{bg} rounded-lg p-3 text-center">
-                    <i class="{icon} text-3xl {color} mb-1"></i>
-                    <p class="text-xs text-gray-600">{label}</p>
-                </div>
-            </div>
-            """
+            html_content = (
+                f'<div class="emotion-icon-container {selected_class}">'
+                f'    <div class="{bg} rounded-lg p-3 text-center">'
+                f'        <i class="{icon} text-3xl {color} mb-1"></i>'
+                f'        <p class="text-xs text-gray-600">{label}</p>'
+                f'    </div>'
+                f'</div>'
+            )
             emotion_icons_html.append(html_content)
-        
-        final_icons_html = textwrap.dedent(f"""
-        <div class="grid grid-cols-4 gap-3 mt-6">
-            {"".join(emotion_icons_html)}
-        </div>
-        """)
-        
-        st.markdown(final_icons_html, unsafe_allow_html=True)
 
+        # Render emotion icons grid
+        st.markdown(
+            f"""
+            <div class="grid grid-cols-4 gap-3 mt-6">
+                {"".join(emotion_icons_html)}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Audio Features (MFCCs) Plot
         st.subheader("📊 Audio Features (MFCCs)")
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.bar(range(len(predicted_features)), predicted_features, color='skyblue')
@@ -431,12 +447,15 @@ with col_results:
         plt.close(fig)
 
     else:
-        st.markdown(textwrap.dedent("""
-        <div id="resultsPlaceholder" class="text-center py-12">
-            <i class="fas fa-wave-square text-5xl text-gray-300 mb-4"></i>
-            <p class="text-gray-500">Record or upload audio to analyze emotions</p>
-        </div>
-        """), unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div id="resultsPlaceholder" class="text-center py-12">
+                <i class="fas fa-wave-square text-5xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">Record or upload audio to analyze emotions</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -463,7 +482,6 @@ with st.expander("Give Feedback (Optional)"):
             feedback_text = st.text_area("What was the correct emotion or issue?", key="feedback_text")
             if st.button("Submit detailed feedback", key="submit_feedback"):
                 st.info("Feedback submitted. (This would typically save to a database for future model retraining)")
-
 
 st.markdown("---")
 st.markdown(textwrap.dedent("""
