@@ -22,25 +22,25 @@ def load_model_components_from_url():
     """Loads the pre-trained model, scaler, and label encoder from GitHub URLs."""
     try:
         # Fetch model
-        st.write("Fetching model from GitHub...")
+
         model_response = requests.get(MODEL_URL)
         model_response.raise_for_status()
         model = joblib.load(io.BytesIO(model_response.content))
-        st.success("Model loaded.")
+        
 
         # Fetch scaler
-        st.write("Fetching scaler from GitHub...")
+        
         scaler_response = requests.get(SCALER_URL)
         scaler_response.raise_for_status()
         scaler = joblib.load(io.BytesIO(scaler_response.content))
-        st.success("Scaler loaded.")
+       
 
         # Fetch label encoder
-        st.write("Fetching label encoder from GitHub...")
+        
         encoder_response = requests.get(ENCODER_URL)
         encoder_response.raise_for_status()
         label_encoder = joblib.load(io.BytesIO(encoder_response.content))
-        st.success("Label Encoder loaded.")
+        
 
         return model, scaler, label_encoder
     except requests.exceptions.RequestException as e:
